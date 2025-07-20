@@ -1,0 +1,97 @@
+import OpenAI from 'openai';
+
+// Initialize OpenAI
+const openai = new OpenAI({
+    apiKey: "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",
+    baseURL: "https://openrouter.ai/api/v1",
+});
+
+// Temporary session store (reset on server restart)
+const sessions = {}; // key: sessionId, value: { state, userAnswers }
+
+const quizQuestions = [
+    { question: "Do you enjoy solving complex problems?", id: 1 },
+    { question: "Do you prefer working in teams over working alone?", id: 2 },
+    { question: "Are you interested in technology and coding?", id: 3 },
+    { question: "Do you like helping and guiding others?", id: 4 },
+    { question: "Are you comfortable speaking or presenting to groups?", id: 5 },
+    { question: "Do you enjoy organizing and managing projects?", id: 6 },
+    { question: "Do you like working with data and analysis?", id: 7 },
+    { question: "Are you interested in creative design or writing?", id: 8 },
+    { question: "Do you value job stability over taking risks?", id: 9 },
+    { question: "Would you like to build your own business someday?", id: 10 },
+];
+
+const aiChatController = async (req, res) => {
+    const sessionId = req.body.sessionId || 'default'; // Use frontend userId or generate on first call
+    const userInput = req.body.message?.toLowerCase().trim() || '';
+
+    // Initialize session if not existing
+    if (!sessions[sessionId]) {
+        sessions[sessionId] = { state: "greeting", userAnswers: [] };
+    }
+
+    const session = sessions[sessionId];
+    let response = "";
+
+    try {
+        console.log("==== Incoming Request ====");
+        console.log("Session:", sessionId);
+        console.log("State:", session.state);
+        console.log("User Input:", userInput);
+        console.log("==========================");
+
+        if (session.state === "greeting") {
+            if (userInput.includes("yes")) {
+                response = "Great! Please answer with yes/no for each:\n" +
+                    quizQuestions.map(q => `${q.id}. ${q.question}`).join("\n");
+                session.state = "collectingAnswers";
+            } else {
+                response = `Hi there, ready to take a short career test? (yes/no)`;
+            }
+        } else if (session.state === "collectingAnswers") {
+            const answers = userInput.split(',').map(a => a.trim().toLowerCase());
+            if (answers.length === 10 && answers.every(a => a === "yes" || a === "no")) {
+                session.userAnswers = answers;
+
+                const prompt = `
+You are a concise career counselor AI.
+Based on these 10 yes/no quiz answers: ${answers.join(', ')},
+provide a short, direct career recommendation:
+List:
+• Single career path
+• Exact next steps
+• Technologies/skills to learn first
+• Job titles to target
+• Where to find job opportunities
+• Salary expectations
+• Best companies to target
+Keep it under 100 words, use clear bullet points, no filler.
+`;
+
+                const aiResponse = await openai.chat.completions.create({
+                    model: "deepseek/deepseek-r1-0528:free",
+                    messages: [
+                        { role: "system", content: "You are a concise career counselor. Always keep answers under 100 words, using short bullet points." },
+                        { role: "user", content: prompt }
+                    ]
+                });
+
+                response = aiResponse.choices[0].message.content.trim();
+                session.state = "greeting";
+                session.userAnswers = [];
+            } else {
+                response = "❌ Please answer all 10 questions with 'yes' or 'no', separated by commas.";
+            }
+        }
+
+        console.log("✅ AI Response:", response);
+        res.json({ response });
+
+    } catch (error) {
+        console.error("🔥 Error:", error);
+        res.status(500).json({ error: error.message || "Internal Server Error" });
+    }
+};
+
+export { aiChatController };
