@@ -11,7 +11,7 @@ import connectDB from './database/mongo.js';
 const app = express();
 
 app.use(cors({
-    origin: ['http://localhost:5173', 'https://amazing-marigold-63b0f6.netlify.app/'],
+    origin: ['http://localhost:5173', 'https://amazing-marigold-63b0f6.netlify.app'],
     credentials: true,
 }));
 
