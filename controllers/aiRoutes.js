@@ -1,13 +1,12 @@
 import OpenAI from 'openai';
+import Session from '../model/sessionModel.js';
 
 // Initialize OpenAI
 const openai = new OpenAI({
-    apiKey: "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",
+    apiKey: process.env.OPENAI_API_KEY,
     baseURL: "https://openrouter.ai/api/v1",
 });
 
-// Temporary session store (reset on server restart)
-const sessions = {}; // key: sessionId, value: { state, userAnswers }
 
 const quizQuestions = [
     { question: "Do you enjoy solving complex problems?", id: 1 },
@@ -27,11 +26,10 @@ const aiChatController = async (req, res) => {
     const userInput = req.body.message?.toLowerCase().trim() || '';
 
     // Initialize session if not existing
-    if (!sessions[sessionId]) {
-        sessions[sessionId] = { state: "greeting", userAnswers: [] };
-    }
-
-    const session = sessions[sessionId];
+        let session = await Session.findOne({ sessionId });
+        if (!session) {
+            session = await Session.create({ sessionId });
+        }
     let response = "";
 
     try {
@@ -45,14 +43,15 @@ const aiChatController = async (req, res) => {
             if (userInput.includes("yes")) {
                 response = "Great! Please answer with yes/no for each:\n" +
                     quizQuestions.map(q => `${q.id}. ${q.question}`).join("\n");
-                session.state = "collectingAnswers";
+                await session.save();
+
             } else {
                 response = `Hi there, ready to take a short career test? (yes/no)`;
             }
         } else if (session.state === "collectingAnswers") {
             const answers = userInput.split(',').map(a => a.trim().toLowerCase());
             if (answers.length === 10 && answers.every(a => a === "yes" || a === "no")) {
-                session.userAnswers = answers;
+                await session.save();
 
                 const prompt = `
 You are a concise career counselor AI.
@@ -64,8 +63,9 @@ List:
 • Technologies/skills to learn first
 • Job titles to target
 • Where to find job opportunities
-• Salary expectations
-• Best companies to target
+• Salary expectations as fresher
+• Best companies to target in india
+• Any certifications needed
 Keep it under 100 words, use clear bullet points, no filler.
 `;
 
@@ -80,6 +80,7 @@ Keep it under 100 words, use clear bullet points, no filler.
                 response = aiResponse.choices[0].message.content.trim();
                 session.state = "greeting";
                 session.userAnswers = [];
+                await session.save();
             } else {
                 response = "❌ Please answer all 10 questions with 'yes' or 'no', separated by commas.";
             }
