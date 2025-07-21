@@ -27,6 +27,7 @@
     "node-fetch": "^3.3.2",
     "nodemailer": "^7.0.4",
     "openai": "^5.7.0",
+    "path": "^0.12.7",
     "pdf-parse": "^1.1.1",
     "razorpay": "^2.9.6"
   },

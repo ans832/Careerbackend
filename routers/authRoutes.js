@@ -6,7 +6,7 @@ import Razorpay from 'razorpay';
 import dotenv from 'dotenv';
 import { createBooking } from '../controllers/create-bookings.js';
 import { uploadResume } from '../controllers/resumeController.js';
-
+import Booking from '../model/Booking.js';
 
 dotenv.config();
 
@@ -41,6 +41,19 @@ router.post('/create-order', async (req, res) => {
   }
 });
 
+
 router.post('/create-booking', createBooking);
+
+router.get('/user/:email', async (req, res) => {
+    try {
+        const userEmail = req.params.email;
+        
+        const bookings = await Booking.find({ email: userEmail }).sort({ createdAt: -1 });
+        res.json(bookings);
+    } catch (error) {
+        console.error("❌ Error fetching bookings:", error);
+        res.status(500).json({ message: "Error fetching bookings" });
+    }
+});
 
 export default router;
