@@ -3,10 +3,9 @@ import Session from '../model/sessionModel.js';
 
 // Initialize OpenAI
 const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
+    apiKey: process.env.OPENROUTER_API_KEY,
     baseURL: "https://openrouter.ai/api/v1",
 });
-
 
 const quizQuestions = [
     { question: "Do you enjoy solving complex problems?", id: 1 },
@@ -22,15 +21,12 @@ const quizQuestions = [
 ];
 
 const aiChatController = async (req, res) => {
-    const sessionId = req.body.sessionId || 'default'; // Use frontend userId or generate on first call
+    const sessionId = req.body.sessionId || 'default';
     const userInput = req.body.message?.toLowerCase().trim() || '';
+    let session = await Session.findOne({ sessionId });
+    if (!session) session = await Session.create({ sessionId });
 
-    // Initialize session if not existing
-        let session = await Session.findOne({ sessionId });
-        if (!session) {
-            session = await Session.create({ sessionId });
-        }
-    let response = "";
+    let response = '';
 
     try {
         console.log("==== Incoming Request ====");
@@ -40,22 +36,21 @@ const aiChatController = async (req, res) => {
         console.log("==========================");
 
         if (session.state === "greeting") {
-                if (userInput.includes("yes")) {
-            session.state = "collectingAnswers"; // ✅ FIX: set state he
-            response = "Great! Please answer with yes/no for each:\n" +
-                quizQuestions.map(q => `${q.id}. ${q.question}`).join("\n");
-            await session.save();
-        } else {
-            response = `Hi there, ready to take a short career test? (yes/no)`;
-        }
-    } else if (session.state === "collectingAnswers") {
-        const answers = userInput.split(',').map(a => a.trim().toLowerCase());
+            if (userInput.includes("yes")) {
+                session.state = "collectingAnswers";
+                await session.save();
+                response = "Great! Please answer with yes/no for each:\n" +
+                    quizQuestions.map(q => `${q.id}. ${q.question}`).join("\n");
+            } else {
+                response = `Hi there, ready to take a short career test? (yes/no)`;
+            }
+        } else if (session.state === "collectingAnswers") {
+            const answers = userInput.split(',').map(a => a.trim().toLowerCase());
             if (answers.length === 10 && answers.every(a => a === "yes" || a === "no")) {
                 session.userAnswers = answers;
                 await session.save();
 
                 const prompt = `
-You are a concise career counselor AI.
 Based on these 10 yes/no quiz answers: ${answers.join(', ')},
 provide a short, direct career recommendation:
 List:
@@ -65,15 +60,15 @@ List:
 • Job titles to target
 • Where to find job opportunities
 • Salary expectations as fresher
-• Best companies to target in india
+• Best companies to target in India
 • Any certifications needed
-Keep it under 100 words, use clear bullet points, no filler.
+Keep it under 100 words, clear bullet points, no filler.
 `;
 
                 const aiResponse = await openai.chat.completions.create({
                     model: "deepseek/deepseek-r1-0528:free",
                     messages: [
-                        { role: "system", content: "You are a concise career counselor. Always keep answers under 100 words, using short bullet points." },
+                        { role: "system", content: "You are a concise career counselor AI." },
                         { role: "user", content: prompt }
                     ]
                 });
@@ -92,6 +87,7 @@ Keep it under 100 words, use clear bullet points, no filler.
 
     } catch (error) {
         console.error("🔥 Error:", error);
+        if (error.response) console.error(error.response.data);
         res.status(500).json({ error: error.message || "Internal Server Error" });
     }
 };

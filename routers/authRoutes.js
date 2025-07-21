@@ -5,6 +5,8 @@ import { aiChatController } from '../controllers/aiRoutes.js';
 import Razorpay from 'razorpay';
 import dotenv from 'dotenv';
 import { createBooking } from '../controllers/create-bookings.js';
+import { uploadResume } from '../controllers/resumeController.js';
+
 
 dotenv.config();
 
@@ -18,6 +20,7 @@ const razorpay = new Razorpay({
 router.post('/send-otp', emailVerification);
 router.post('/verify-otp', verifyOtp);
 router.post('/chat', aiChatController);
+router.post('/upload-resume', uploadResume);
 router.post('/create-order', async (req, res) => {
   const { amount } = req.body; // amount in rupees
 
