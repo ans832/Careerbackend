@@ -40,17 +40,18 @@ const aiChatController = async (req, res) => {
         console.log("==========================");
 
         if (session.state === "greeting") {
-            if (userInput.includes("yes")) {
-                response = "Great! Please answer with yes/no for each:\n" +
-                    quizQuestions.map(q => `${q.id}. ${q.question}`).join("\n");
-                await session.save();
-
-            } else {
-                response = `Hi there, ready to take a short career test? (yes/no)`;
-            }
-        } else if (session.state === "collectingAnswers") {
-            const answers = userInput.split(',').map(a => a.trim().toLowerCase());
+                if (userInput.includes("yes")) {
+            session.state = "collectingAnswers"; // ✅ FIX: set state he
+            response = "Great! Please answer with yes/no for each:\n" +
+                quizQuestions.map(q => `${q.id}. ${q.question}`).join("\n");
+            await session.save();
+        } else {
+            response = `Hi there, ready to take a short career test? (yes/no)`;
+        }
+    } else if (session.state === "collectingAnswers") {
+        const answers = userInput.split(',').map(a => a.trim().toLowerCase());
             if (answers.length === 10 && answers.every(a => a === "yes" || a === "no")) {
+                session.userAnswers = answers;
                 await session.save();
 
                 const prompt = `
