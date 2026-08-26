@@ -7,7 +7,7 @@ import dotenv from 'dotenv';
 import { createBooking } from '../controllers/create-bookings.js';
 import { uploadResume } from '../controllers/resumeController.js';
 import Booking from '../model/Booking.js';
-import { aiMockInterview } from '../controllers/mockinter.js';
+
 
 dotenv.config();
 
@@ -22,13 +22,13 @@ router.post('/send-otp', emailVerification);
 router.post('/verify-otp', verifyOtp);
 router.post('/chat', aiChatController);
 router.post('/upload-resume', uploadResume);
-router.post('/mock-interview', aiMockInterview);
+
 
 router.post('/create-order', async (req, res) => {
   const { amount } = req.body; // amount in rupees
 
   try {
-    
+
 
     const order = await razorpay.orders.create({
       amount: amount * 100, // in paise
@@ -36,7 +36,7 @@ router.post('/create-order', async (req, res) => {
       receipt: `receipt_order_${Date.now()}`,
     });
 
-    
+
     res.json(order);
   } catch (err) {
     console.error('Error creating Razorpay order:', err);
@@ -48,22 +48,22 @@ router.post('/create-order', async (req, res) => {
 router.post('/create-booking', createBooking);
 
 router.get('/user/:email', async (req, res) => {
-    try {
-        const userEmail = req.params.email.trim().toLowerCase();
+  try {
+    const userEmail = req.params.email.trim().toLowerCase();
 
-        console.log("Fetching bookings for:", userEmail);
+    console.log("Fetching bookings for:", userEmail);
 
-        const bookings = await Booking.find({
-            email: { $regex: new RegExp(`^${userEmail}$`, "i") }
-        }).sort({ createdAt: -1 });
+    const bookings = await Booking.find({
+      email: { $regex: new RegExp(`^${userEmail}$`, "i") }
+    }).sort({ createdAt: -1 });
 
-        console.log("Found bookings:", bookings);
+    console.log("Found bookings:", bookings);
 
-        res.json(bookings);
-    } catch (error) {
-        console.error("❌ Error fetching bookings:", error);
-        res.status(500).json({ message: "Error fetching bookings" });
-    }
+    res.json(bookings);
+  } catch (error) {
+    console.error("❌ Error fetching bookings:", error);
+    res.status(500).json({ message: "Error fetching bookings" });
+  }
 });
 
 export default router;
