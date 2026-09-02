@@ -1,58 +1,67 @@
 import nodemailer from 'nodemailer'; // ⬅️ Nodemailer for sending emails
 import Joi from 'joi'; // ⬅️ Joi for validation
-import otpStore  from '../otp-store.js'; // ⬅️ shared OTP store
+import otpStore from '../otp-store.js'; // ⬅️ shared OTP store
 import dotenv from 'dotenv'; // ⬅️ dotenv for environment variables
 dotenv.config(); // ⬅️ Load environment variables
 
-const emailVerification = async(req,res)=>{
-     console.log("✅ /send-otp endpoint hit, body:", req.body);
+const emailVerification = async (req, res) => {
+  console.log("✅ /send-otp endpoint hit, body:", req.body);
 
 
-    
-    // Email validation schema using Joi
-    const emailSchema = Joi.object({
-      email: Joi.string().email().required()
-    });
-    
-    // const otpSchema = Joi.object({
-    //   email: Joi.string().email().required(),
-    //   otp: Joi.string().length(6).pattern(/^\d+$/).required()
-    // });
-    
-    // Function to generate 6-digit OTP
-    function generateOTP() {
-      return Math.floor(100000 + Math.random() * 900000).toString();
-    }
 
-    console.log("PASS:", process.env.PASS);
-    
-    // Nodemailer transporter setup
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER || "gansh3764@gmail.com",
-        pass: process.env.PASS // Use environment variable for security
-      }
-    });
-    
-    // Route: Send OTP
-   
-      const { error, value } = emailSchema.validate(req.body);
-      if (error) {
-        return res.status(400).json({ error: 'Invalid email format' });
-      }
-    
-      const email = value.email;
-      const otp = generateOTP();
-      const expiry = Date.now() + 5 * 60 * 1000; // 5 minutes
-    
-      otpStore[email] = { otp, expiry };
-    
-      const mailOptions = {
-        from: `"OTP Service" <${process.env.EMAIL_USER || 'gansh3764@gmail.com'}>`,
-        to: email,
-        subject: 'Your OTP Verification Code',
-        html: `
+  // Email validation schema using Joi
+  const emailSchema = Joi.object({
+    email: Joi.string().email().required()
+  });
+
+  // const otpSchema = Joi.object({
+  //   email: Joi.string().email().required(),
+  //   otp: Joi.string().length(6).pattern(/^\d+$/).required()
+  // });
+
+  // Function to generate 6-digit OTP
+  function generateOTP() {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+  }
+
+
+  // Nodemailer transporter setup
+  const transporter = nodemailer.createTransport({
+    host: 'smtp.gmail.com',
+    port: 465,
+    secure: true,
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.PASS
+    },
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
+    socketTimeout: 15000
+  });
+
+  await transporter.verify();
+  console.log("✅ SMTP connection successful");
+
+  await transporter.sendMail(mailOptions);
+
+  // Route: Send OTP
+
+  const { error, value } = emailSchema.validate(req.body);
+  if (error) {
+    return res.status(400).json({ error: 'Invalid email format' });
+  }
+
+  const email = value.email;
+  const otp = generateOTP();
+  const expiry = Date.now() + 5 * 60 * 1000; // 5 minutes
+
+  otpStore[email] = { otp, expiry };
+
+  const mailOptions = {
+    from: `"OTP Service" <${process.env.EMAIL_USER || 'gansh3764@gmail.com'}>`,
+    to: email,
+    subject: 'Your OTP Verification Code',
+    html: `
           <div style="font-family: Arial, sans-serif;">
             <h1> AI career navigator </h1>
             <h2>OTP Verification</h2>
@@ -64,22 +73,22 @@ const emailVerification = async(req,res)=>{
             <p style="font-size: 12px; color: gray;">If you didn’t request this, you can safely ignore it.</p>
           </div>
         `
-      };
-       
-    
-    
-      try {
-        await transporter.sendMail(mailOptions);
-        res.status(200).json({ message: 'OTP sent to email' });
-      } catch (err) {
-        console.error('❌ Error sending email:', err);
-        res.status(500).json({ error: 'Failed to send OTP', details: err.message });
-      }
-    
-    
-    // Route: Verify OTP
-      
-    
+  };
+
+
+
+  try {
+    await transporter.sendMail(mailOptions);
+    res.status(200).json({ message: 'OTP sent to email' });
+  } catch (err) {
+    console.error('❌ Error sending email:', err);
+    res.status(500).json({ error: 'Failed to send OTP', details: err.message });
+  }
+
+
+  // Route: Verify OTP
+
+
 }
 export { emailVerification };
 
