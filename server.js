@@ -1,18 +1,13 @@
+import dns from 'dns';
+dns.setServers(['8.8.8.8', '1.1.1.1']);
+
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import router from './routers/authRoutes.js';
-import nodeMailer from 'nodemailer';
 import connectDB from './database/mongo.js';
 
-import { fileURLToPath } from 'url';
-
-// __dirname fix for ES Modules
-// const __filename = fileURLToPath(import.meta.url);
-// const __dirname = path.dirname(__filename);
-
 dotenv.config();
-connectDB();
 
 const app = express();
 
@@ -20,17 +15,29 @@ app.use(cors());
 app.use(express.json());
 
 app.post('/', (req, res) => {
+  res.send("Hello World");
+});
 
-  res.send("Hello World")
-})
-
-// API ROUTES FIRST
+// API ROUTES
 app.use('/api', router);
 
-// Serve static files
+const PORT = process.env.PORT || 5000;
+const HOST = process.env.HOST || 'localhost';
 
+async function startServer() {
+  try {
+    await connectDB();
 
+    console.log('✅ MongoDB connected');
 
-app.listen(process.env.PORT || 5000, () => {
-  console.log(`Server running on ${process.env.HOST || 'localhost'}:${process.env.PORT || 5000}`);
-});
+    app.listen(PORT, () => {
+      console.log(`✅ Server running on ${HOST}:${PORT}`);
+    });
+
+  } catch (error) {
+    console.error('❌ MongoDB connection failed:', error.message);
+    process.exit(1);
+  }
+}
+
+startServer();
